@@ -27,6 +27,13 @@ const ui = {
   visSensitivity: $("visSensitivity"),
   smoothing: $("smoothing"),
   rainbowSpeed: $("rainbowSpeed"),
+  bassGain: $("bassGain"),
+  midGain: $("midGain"),
+  trebleGain: $("trebleGain"),
+  warmthGain: $("warmthGain"),
+  mudGain: $("mudGain"),
+  presenceGain: $("presenceGain"),
+  airGain: $("airGain"),
   videoUrlInput: $("videoUrlInput"),
   loadUrlBtn: $("loadUrlBtn"),
   copyGuideBtn: $("copyGuideBtn"),
@@ -73,6 +80,8 @@ let audioCtx;
 let analyser;
 let source;
 let dataArray;
+let bassFilter, midFilter, trebleFilter;
+let warmthFilter, mudFilter, presenceFilter, airFilter;
 
 function setVideoSource(url) {
   video.src = url;
@@ -189,9 +198,65 @@ function initAudio() {
 function connectSource(mediaEl) {
   initAudio();
   if (source) source.disconnect();
+
   source = audioCtx.createMediaElementSource(mediaEl);
-  source.connect(analyser).connect(audioCtx.destination);
+
+  warmthFilter = audioCtx.createBiquadFilter();
+  warmthFilter.type = "lowshelf";
+  warmthFilter.frequency.value = 120;
+
+  mudFilter = audioCtx.createBiquadFilter();
+  mudFilter.type = "peaking";
+  mudFilter.frequency.value = 350;
+  mudFilter.Q.value = 1.2;
+
+  presenceFilter = audioCtx.createBiquadFilter();
+  presenceFilter.type = "peaking";
+  presenceFilter.frequency.value = 2500;
+  presenceFilter.Q.value = 1.0;
+
+  airFilter = audioCtx.createBiquadFilter();
+  airFilter.type = "highshelf";
+  airFilter.frequency.value = 8000;
+
+  bassFilter = audioCtx.createBiquadFilter();
+  bassFilter.type = "lowshelf";
+  bassFilter.frequency.value = 200;
+
+  midFilter = audioCtx.createBiquadFilter();
+  midFilter.type = "peaking";
+  midFilter.frequency.value = 1000;
+
+  trebleFilter = audioCtx.createBiquadFilter();
+  trebleFilter.type = "highshelf";
+  trebleFilter.frequency.value = 3000;
+
+  source
+    .connect(warmthFilter)
+    .connect(mudFilter)
+    .connect(presenceFilter)
+    .connect(airFilter)
+    .connect(bassFilter)
+    .connect(midFilter)
+    .connect(trebleFilter)
+    .connect(analyser)
+    .connect(audioCtx.destination);
+
+  updateEQ();
   ui.audioState.textContent = `Audio: ${mediaEl === video ? "video" : "uploaded"}`;
+}
+
+function updateEQ() {
+  if (!bassFilter) return;
+
+  bassFilter.gain.value = Number(ui.bassGain.value) * 10 - 10;
+  midFilter.gain.value = Number(ui.midGain.value) * 10 - 10;
+  trebleFilter.gain.value = Number(ui.trebleGain.value) * 10 - 10;
+
+  warmthFilter.gain.value = Number(ui.warmthGain.value);
+  mudFilter.gain.value = Number(ui.mudGain.value);
+  presenceFilter.gain.value = Number(ui.presenceGain.value);
+  airFilter.gain.value = Number(ui.airGain.value);
 }
 
 function visColor(t) {
@@ -458,6 +523,9 @@ function wireEvents() {
   });
 
   ui.exportWebmBtn.addEventListener("click", () => exportWebm(4));
+
+  [ui.bassGain, ui.midGain, ui.trebleGain, ui.warmthGain, ui.mudGain, ui.presenceGain, ui.airGain]
+    .forEach((el) => el.addEventListener("input", updateEQ));
 
   ui.smoothing.addEventListener("input", () => {
     if (analyser) analyser.smoothingTimeConstant = Number(ui.smoothing.value);
