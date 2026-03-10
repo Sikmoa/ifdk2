@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Emoji Engine Toolkit v6.0</title>
+  <style>
+    :root {
+      --bg: #050811;
+      --bg-2: #0c1224;
+      --panel: #121a2d;
+      --line: #2b3a61;
+      --text: #dce9ff;
+      --muted: #90a8d9;
+      --accent: #00f2ff;
+      --accent2: #7f8bff;
+      --good: #20e47b;
+      --warn: #ff6a94;
+      --shadow: rgba(0, 0, 0, 0.4);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background:
+        radial-gradient(circle at 12% 8%, rgba(0, 242, 255, 0.13), transparent 28%),
+        radial-gradient(circle at 88% 12%, rgba(127, 139, 255, 0.16), transparent 32%),
+        linear-gradient(180deg, #04060c, #070b15 45%, #090d1a);
+    }
+
+    .app {
+      width: min(1500px, 96vw);
+      margin: 18px auto;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
+      box-shadow: 0 20px 60px var(--shadow);
+      padding: 14px;
+    }
+
+    h1 {
+      margin: 6px 0 14px;
+      color: var(--accent);
+      letter-spacing: .08em;
+      font-size: clamp(1rem, 2vw, 1.35rem);
+      text-shadow: 0 0 20px rgba(0, 242, 255, .25);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 390px) 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: linear-gradient(180deg, rgba(18,26,45,.96), rgba(12,18,34,.97));
+      padding: 12px;
+    }
+
+    .controls { position: sticky; top: 10px; max-height: calc(100vh - 36px); overflow:auto; }
+    .group { border-top: 1px dashed #34456f; margin-top: 10px; padding-top: 10px; }
+
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+
+    label {
+      display: block;
+      font-size: .76rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin: 0 0 5px;
+    }
+
+    .item { margin-bottom: 10px; }
+
+    select, input, button {
+      width: 100%;
+      color: var(--text);
+      border: 1px solid #314570;
+      border-radius: 8px;
+      background: #0b1223;
+      padding: 9px 10px;
+      transition: .15s ease;
+      font: inherit;
+      font-size: .88rem;
+    }
+
+    input[type="range"] { padding: 0; accent-color: var(--accent); }
+
+    select:focus, input:focus, button:focus-visible {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,242,255,.16);
+      outline: none;
+    }
+
+    button { cursor: pointer; font-weight: 700; background: linear-gradient(180deg, #172543, #101a32); }
+    button:hover { transform: translateY(-1px); border-color: #4a6093; }
+
+    .info { font-size: .74rem; color: var(--muted); line-height: 1.45; }
+    .warn { color: var(--warn); font-size: .74rem; display:none; margin-top: 5px; }
+
+    .media { display: grid; gap: 10px; }
+
+    canvas {
+      display: block;
+      width: 100%;
+      background: #000;
+      border: 1px solid #2a3a5f;
+      border-radius: 10px;
+    }
+
+    #emojiCanvas { min-height: 380px; image-rendering: pixelated; }
+    #visualizerCanvas { height: 160px; }
+
+    .status {
+      display:flex; flex-wrap: wrap; gap: 8px;
+    }
+
+    .chip {
+      border: 1px solid #324670;
+      background: #101936;
+      color: var(--muted);
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: .76rem;
+    }
+
+    .tiny { font-size: .72rem; color: var(--muted); }
+    video, audio { display:none; }
+
+    @media (max-width: 1000px){
+      .layout { grid-template-columns: 1fr; }
+      .controls { position: static; max-height: none; }
+      .row-3 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>&gt; EMOJI_ENGINE_TOOLKIT_v6.0</h1>
+
+    <div class="layout">
+      <div class="panel controls">
+        <div class="item">
+          <label for="videoUpload">Video Source</label>
+          <input type="file" id="videoUpload" accept="video/*" />
+        </div>
+
+        <div class="item row-3">
+          <button id="playBtn" type="button">RUN</button>
+          <button id="pauseBtn" type="button">PAUSE</button>
+          <button id="fullscreenBtn" type="button">FULL</button>
+        </div>
+
+        <div class="item row-2">
+          <button id="exportPngBtn" type="button">EXPORT PNG</button>
+          <button id="exportGifBtn" type="button">EXPORT WEBM</button>
+        </div>
+
+        <div class="group">
+          <div class="item">
+            <label for="resSlider">Pixel Density <span id="resLabel">12px</span></label>
+            <input type="range" id="resSlider" min="4" max="56" step="2" value="12" />
+            <div id="resWarning" class="warn">⚠ very low values are heavy</div>
+          </div>
+
+          <div class="item row-2">
+            <div>
+              <label for="emojiMode">Mapping Algorithm</label>
+              <select id="emojiMode">
+                <option value="full">FULL_EMOJI_MATRIX</option>
+                <option value="ascii">ASCII_CLASSIC</option>
+                <option value="ascii_blur">ASCII_BLUR</option>
+                <option value="bw">BINARY_SQUARES</option>
+                <option value="glitch">GLITCH_CORE</option>
+                <option value="thermal">THERMAL_SIGHT</option>
+              </select>
+            </div>
+            <div>
+              <label for="colorProfile">Color Profile</label>
+              <select id="colorProfile">
+                <option value="source">SOURCE</option>
+                <option value="matrix">MATRIX</option>
+                <option value="cyber">CYBER</option>
+                <option value="mono">MONO</option>
+                <option value="duotone">DUOTONE</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="item row-2">
+            <button id="toggleAudioSource" type="button">Use Video Audio</button>
+            <button id="toggleRainbow" type="button">Rainbow OFF</button>
+          </div>
+
+          <div class="item row-2">
+            <div>
+              <label for="audioUpload">Audio Upload</label>
+              <input type="file" id="audioUpload" accept="audio/*" />
+            </div>
+            <div>
+              <label for="visColor">Visualizer Color</label>
+              <input type="color" id="visColor" value="#00f2ff" />
+            </div>
+          </div>
+
+          <div class="item row-2">
+            <div>
+              <label for="visType">Visualizer Style</label>
+              <select id="visType">
+                <option value="bars">Bars</option>
+                <option value="wave">Wave</option>
+                <option value="circle">Circle</option>
+                <option value="radial">Radial Burst</option>
+                <option value="energy">Energy Strip</option>
+              </select>
+            </div>
+            <div>
+              <label for="visSensitivity">Sensitivity</label>
+              <input type="range" id="visSensitivity" min="0.4" max="2.2" step="0.1" value="1" />
+            </div>
+          </div>
+
+          <div class="item row-2">
+            <div>
+              <label for="smoothing">Smoothing</label>
+              <input type="range" id="smoothing" min="0" max="0.95" step="0.05" value="0.7" />
+            </div>
+            <div>
+              <label for="rainbowSpeed">Rainbow Speed</label>
+              <input type="range" id="rainbowSpeed" min="1" max="30" value="8" />
+            </div>
+          </div>
+
+          <div class="item row-3">
+            <div>
+              <label for="bassGain">Bass</label>
+              <input type="range" id="bassGain" min="0" max="2" step="0.1" value="1" />
+            </div>
+            <div>
+              <label for="midGain">Mid</label>
+              <input type="range" id="midGain" min="0" max="2" step="0.1" value="1" />
+            </div>
+            <div>
+              <label for="trebleGain">Treble</label>
+              <input type="range" id="trebleGain" min="0" max="2" step="0.1" value="1" />
+            </div>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="item">
+            <label for="videoUrlInput">Video URL Importer (direct files only)</label>
+            <input id="videoUrlInput" placeholder="https://example.com/video.mp4" />
+          </div>
+          <div class="item row-2">
+            <button id="loadUrlBtn" type="button">LOAD URL</button>
+            <button id="copyGuideBtn" type="button">COPY TOOL GUIDE</button>
+          </div>
+          <div class="info">
+            For sites like YouTube/TikTok, direct browser download is typically blocked by CORS/platform rules.
+            Use your own backend/downloader service and paste its direct media URL here.
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="item">
+            <label>Video Trimmer</label>
+            <div class="tiny" id="durationInfo">Duration: --</div>
+          </div>
+          <div class="item row-2">
+            <div>
+              <label for="trimStart">Trim Start (s)</label>
+              <input type="range" id="trimStart" min="0" max="0" step="0.1" value="0" />
+              <div class="tiny" id="trimStartLabel">0.0s</div>
+            </div>
+            <div>
+              <label for="trimEnd">Trim End (s)</label>
+              <input type="range" id="trimEnd" min="0" max="0" step="0.1" value="0" />
+              <div class="tiny" id="trimEndLabel">0.0s</div>
+            </div>
+          </div>
+          <div class="item row-3">
+            <button id="previewTrimBtn" type="button">PREVIEW CLIP</button>
+            <button id="jumpStartBtn" type="button">JUMP START</button>
+            <button id="exportTrimBtn" type="button">EXPORT CLIP</button>
+          </div>
+          <div class="tiny" id="trimStatus">Trim status: idle</div>
+        </div>
+      </div>
+
+      <div class="panel media">
+        <canvas id="emojiCanvas"></canvas>
+        <canvas id="visualizerCanvas"></canvas>
+
+        <div class="status">
+          <span id="modeState" class="chip">Mode: idle</span>
+          <span id="fpsState" class="chip">FPS: --</span>
+          <span id="resState" class="chip">Internal: --</span>
+          <span id="audioState" class="chip">Audio: idle</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <video id="video" playsinline></video>
+  <audio id="audioPlayer" crossorigin="anonymous"></audio>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    const video = $("video");
+    const audioPlayer = $("audioPlayer");
+    const canvas = $("emojiCanvas");
+    const ctx = canvas.getContext("2d", { alpha: false });
+    const visCanvas = $("visualizerCanvas");
+    const vCtx = visCanvas.getContext("2d");
+
+    const videoUpload = $("videoUpload");
+    const audioUpload = $("audioUpload");
+    const playBtn = $("playBtn");
+    const pauseBtn = $("pauseBtn");
+    const fullscreenBtn = $("fullscreenBtn");
+    const exportPngBtn = $("exportPngBtn");
+    const exportGifBtn = $("exportGifBtn");
+
+    const resSlider = $("resSlider");
+    const resLabel = $("resLabel");
+    const resWarning = $("resWarning");
+    const emojiMode = $("emojiMode");
+    const colorProfile = $("colorProfile");
+
+    const toggleAudioSource = $("toggleAudioSource");
+    const toggleRainbow = $("toggleRainbow");
+    const visType = $("visType");
+    const visColor = $("visColor");
+    const visSensitivity = $("visSensitivity");
+    const smoothing = $("smoothing");
+    const rainbowSpeed = $("rainbowSpeed");
+
+    const bassGain = $("bassGain");
+    const midGain = $("midGain");
+    const trebleGain = $("trebleGain");
+
+    const videoUrlInput = $("videoUrlInput");
+    const loadUrlBtn = $("loadUrlBtn");
+    const copyGuideBtn = $("copyGuideBtn");
+
+    const trimStart = $("trimStart");
+    const trimEnd = $("trimEnd");
+    const trimStartLabel = $("trimStartLabel");
+    const trimEndLabel = $("trimEndLabel");
+    const previewTrimBtn = $("previewTrimBtn");
+    const jumpStartBtn = $("jumpStartBtn");
+    const exportTrimBtn = $("exportTrimBtn");
+    const trimStatus = $("trimStatus");
+    const durationInfo = $("durationInfo");
+
+    const modeState = $("modeState");
+    const fpsState = $("fpsState");
+    const resState = $("resState");
+    const audioState = $("audioState");
+
+    const MAX_INTERNAL_WIDTH = 560;
+    const TARGET_FPS = 30;
+    const FRAME_INTERVAL = 1000 / TARGET_FPS;
+
+    const ASCII_SET = Array.from({ length: 95 }, (_, i) => String.fromCharCode(32 + i));
+    const BW_SET = ["⬛", "⬜"];
+    const GLITCH_SET = ["?", "!", "@", "#", "$", "%", "X", "0", "1"];
+    const THERMAL_SET = ["🟦", "🟩", "🟨", "🟧", "🟥"];
+    const FULL_SET = ["⬛", "⬜", "🟥", "🟧", "🟨", "🟩", "🟦", "🔥", "✨", "🌑", "🌕"];
+
+    const offCanvas = document.createElement("canvas");
+    const offCtx = offCanvas.getContext("2d", { willReadFrequently: true });
+
+    let isPlaying = false;
+    let rainbowEnabled = false;
+    let usingVideoAudio = true;
+    let clipPreviewing = false;
+
+    let currentFontSize = 0;
+    let lastFrameTime = 0;
+    let fpsTimer = 0;
+    let frameCount = 0;
+    let lastWidth = 0;
+    let lastHeight = 0;
+
+    let audioCtx;
+    let analyser;
+    let source;
+    let dataArray;
+    let bassFilter, midFilter, trebleFilter;
+
+    function formatSec(n) { return `${Number(n).toFixed(1)}s`; }
+
+    function setTrimUiFromDuration(duration) {
+      const d = Math.max(0, Number(duration || 0));
+      durationInfo.textContent = `Duration: ${d.toFixed(1)}s`;
+
+      trimStart.max = d;
+      trimEnd.max = d;
+      trimStart.value = 0;
+      trimEnd.value = d;
+      trimStartLabel.textContent = formatSec(0);
+      trimEndLabel.textContent = formatSec(d);
+    }
+
+    function normalizeTrim() {
+      const start = Number(trimStart.value);
+      const end = Number(trimEnd.value);
+      if (start >= end) {
+        trimEnd.value = Math.min(Number(trimEnd.max), start + 0.2);
+      }
+      trimStartLabel.textContent = formatSec(trimStart.value);
+      trimEndLabel.textContent = formatSec(trimEnd.value);
+    }
+
+    trimStart.addEventListener("input", normalizeTrim);
+    trimEnd.addEventListener("input", normalizeTrim);
+
+    function setVideoSource(url) {
+      video.src = url;
+      video.load();
+      video.onloadedmetadata = () => {
+        const scale = Math.min(1, MAX_INTERNAL_WIDTH / video.videoWidth);
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        offCanvas.width = Math.max(1, Math.floor(video.videoWidth * scale));
+        offCanvas.height = Math.max(1, Math.floor(video.videoHeight * scale));
+        visCanvas.width = canvas.clientWidth || canvas.width;
+        visCanvas.height = 160;
+        resState.textContent = `Internal: ${offCanvas.width}x${offCanvas.height}`;
+        modeState.textContent = `Mode: ${emojiMode.value}`;
+        setTrimUiFromDuration(video.duration);
+      };
+    }
+
+    videoUpload.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setVideoSource(URL.createObjectURL(file));
+    });
+
+    audioUpload.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      audioPlayer.src = URL.createObjectURL(file);
+      usingVideoAudio = false;
+      toggleAudioSource.textContent = "Use Video Audio";
+      connectSource(audioPlayer);
+      audioPlayer.play().catch(() => {});
+      audioState.textContent = "Audio: uploaded track";
+    });
+
+    loadUrlBtn.addEventListener("click", () => {
+      const value = videoUrlInput.value.trim();
+      if (!value) return;
+      setVideoSource(value);
+    });
+
+    copyGuideBtn.addEventListener("click", async () => {
+      const guide = "To support YouTube/TikTok downloads, use a backend service that returns a direct MP4/WebM URL, then paste that URL here.";
+      try {
+        await navigator.clipboard.writeText(guide);
+        copyGuideBtn.textContent = "COPIED";
+      } catch {
+        copyGuideBtn.textContent = "COPY FAILED";
+      }
+      setTimeout(() => copyGuideBtn.textContent = "COPY TOOL GUIDE", 1200);
+    });
+
+    resSlider.addEventListener("input", () => {
+      resLabel.textContent = `${resSlider.value}px`;
+      resWarning.style.display = Number(resSlider.value) <= 6 ? "block" : "none";
+    });
+
+    function pickChar(norm, mode) {
+      switch (mode) {
+        case "ascii":
+        case "ascii_blur":
+          return ASCII_SET[Math.floor(norm * (ASCII_SET.length - 1))];
+        case "bw":
+          return norm > 0.5 ? BW_SET[1] : BW_SET[0];
+        case "glitch": {
+          const idx = Math.floor(Math.abs((norm + Math.random() * 0.25) % 1) * (GLITCH_SET.length - 1));
+          return GLITCH_SET[idx];
+        }
+        case "thermal":
+          return norm < 0.2 ? THERMAL_SET[0] : norm < 0.4 ? THERMAL_SET[1] : norm < 0.6 ? THERMAL_SET[2] : norm < 0.8 ? THERMAL_SET[3] : THERMAL_SET[4];
+        default:
+          return FULL_SET[Math.floor(norm * (FULL_SET.length - 1))];
+      }
+    }
+
+    function pickColor(r, g, b, bright) {
+      switch (colorProfile.value) {
+        case "matrix": return `rgb(0,${bright | 0},0)`;
+        case "cyber": return `rgb(${bright | 0},0,${(bright * 0.55) | 0})`;
+        case "mono": return `rgb(${bright | 0},${bright | 0},${bright | 0})`;
+        case "duotone": return bright > 130 ? "rgb(0,242,255)" : "rgb(125,139,255)";
+        default: return `rgb(${r},${g},${b})`;
+      }
+    }
+
+    function resizeRenderSurface() {
+      if (!video.videoWidth) return;
+      const w = canvas.clientWidth || video.videoWidth;
+      const h = Math.max(240, Math.floor(w * (video.videoHeight / video.videoWidth)));
+      if (w !== lastWidth || h !== lastHeight) {
+        canvas.width = w;
+        canvas.height = h;
+        visCanvas.width = w;
+        lastWidth = w;
+        lastHeight = h;
+      }
+    }
+
+    function render(size) {
+      if (!video.videoWidth) return;
+      if (size <= 6 && emojiMode.value === "full") emojiMode.value = "ascii";
+
+      const scale = Math.min(1, MAX_INTERNAL_WIDTH / video.videoWidth);
+      const internalW = Math.floor(video.videoWidth * scale);
+      const internalH = Math.floor(video.videoHeight * scale);
+      const cols = Math.max(1, Math.floor(internalW / size));
+      const rows = Math.max(1, Math.floor(internalH / size));
+
+      if (offCanvas.width !== cols || offCanvas.height !== rows) {
+        offCanvas.width = cols;
+        offCanvas.height = rows;
+        resState.textContent = `Internal: ${cols}x${rows}`;
+      }
+
+      offCtx.drawImage(video, 0, 0, cols, rows);
+      const pixels = offCtx.getImageData(0, 0, cols, rows).data;
+
+      const cellW = canvas.width / cols;
+      const cellH = canvas.height / rows;
+      const fontSize = Math.max(8, Math.floor(cellH));
+
+      if (fontSize !== currentFontSize) {
+        ctx.font = `${fontSize}px monospace`;
+        ctx.textBaseline = "top";
+        currentFontSize = fontSize;
+      }
+
+      const blur = emojiMode.value === "ascii_blur";
+      ctx.globalAlpha = blur ? .36 : 1;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = 0, p = 0; i < cols * rows; i++, p += 4) {
+        const x = i % cols;
+        const y = (i / cols) | 0;
+
+        const r = pixels[p], g = pixels[p + 1], b = pixels[p + 2];
+        const bright = r * .299 + g * .587 + b * .114;
+        const norm = bright / 255;
+
+        ctx.fillStyle = pickColor(r, g, b, bright);
+        ctx.fillText(pickChar(norm, emojiMode.value), x * cellW, y * cellH);
+      }
+
+      ctx.globalAlpha = 1;
+    }
+
+    function exportPng() {
+      const a = document.createElement("a");
+      a.download = `emoji-frame-${Date.now()}.png`;
+      a.href = canvas.toDataURL("image/png");
+      a.click();
+    }
+
+    async function exportCanvasWebm(seconds = 4) {
+      const stream = canvas.captureStream(30);
+      const recorder = new MediaRecorder(stream, { mimeType: "video/webm;codecs=vp9" });
+      const chunks = [];
+
+      recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+      recorder.start();
+      setTimeout(() => recorder.stop(), seconds * 1000);
+
+      await new Promise((resolve) => recorder.onstop = resolve);
+
+      const blob = new Blob(chunks, { type: "video/webm" });
+      const a = document.createElement("a");
+      a.download = `emoji-canvas-${Date.now()}.webm`;
+      a.href = URL.createObjectURL(blob);
+      a.click();
+    }
+
+    function engineLoop(ts) {
+      if (ts - lastFrameTime >= FRAME_INTERVAL) {
+        resizeRenderSurface();
+        if (isPlaying && !video.paused && !video.ended) {
+          render(Number(resSlider.value));
+          frameCount++;
+
+          if (clipPreviewing && video.currentTime >= Number(trimEnd.value)) {
+            video.pause();
+            clipPreviewing = false;
+            trimStatus.textContent = "Trim status: preview complete";
+          }
+        }
+        lastFrameTime = ts;
+      }
+
+      if (ts - fpsTimer >= 1000) {
+        fpsState.textContent = `FPS: ${frameCount}`;
+        frameCount = 0;
+        fpsTimer = ts;
+      }
+
+      requestAnimationFrame(engineLoop);
+    }
+
+    function initAudio() {
+      if (audioCtx) return;
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = Number(smoothing.value);
+      dataArray = new Uint8Array(analyser.frequencyBinCount);
+    }
+
+    function connectSource(mediaEl) {
+      initAudio();
+      if (source) source.disconnect();
+
+      source = audioCtx.createMediaElementSource(mediaEl);
+
+      bassFilter = audioCtx.createBiquadFilter();
+      bassFilter.type = "lowshelf";
+      bassFilter.frequency.value = 180;
+
+      midFilter = audioCtx.createBiquadFilter();
+      midFilter.type = "peaking";
+      midFilter.frequency.value = 1000;
+      midFilter.Q.value = 1;
+
+      trebleFilter = audioCtx.createBiquadFilter();
+      trebleFilter.type = "highshelf";
+      trebleFilter.frequency.value = 3200;
+
+      source.connect(bassFilter).connect(midFilter).connect(trebleFilter).connect(analyser).connect(audioCtx.destination);
+      updateEQ();
+      audioState.textContent = `Audio: ${mediaEl === video ? "video" : "uploaded"}`;
+    }
+
+    function updateEQ() {
+      if (!bassFilter) return;
+      bassFilter.gain.value = Number(bassGain.value) * 10 - 10;
+      midFilter.gain.value = Number(midGain.value) * 10 - 10;
+      trebleFilter.gain.value = Number(trebleGain.value) * 10 - 10;
+    }
+
+    [bassGain, midGain, trebleGain].forEach(el => el.addEventListener("input", updateEQ));
+    smoothing.addEventListener("input", () => { if (analyser) analyser.smoothingTimeConstant = Number(smoothing.value); });
+
+    function visStrokeStyle(t) {
+      if (!rainbowEnabled) return visColor.value;
+      const hue = ((t / 16) * Number(rainbowSpeed.value)) % 360;
+      return `hsl(${hue} 100% 60%)`;
+    }
+
+    function drawBars(w, h, color, gain) {
+      analyser.getByteFrequencyData(dataArray);
+      const barCount = dataArray.length;
+      const barW = Math.max(2, w / barCount - 1);
+      vCtx.fillStyle = color;
+      for (let i = 0; i < barCount; i++) {
+        const v = (dataArray[i] / 255) * gain;
+        const barH = Math.min(h, v * h);
+        vCtx.fillRect(i * (barW + 1), h - barH, barW, barH);
+      }
+    }
+
+    function drawWave(w, h, color, gain) {
+      analyser.getByteTimeDomainData(dataArray);
+      vCtx.beginPath();
+      vCtx.lineWidth = 2.2;
+      vCtx.strokeStyle = color;
+      for (let i = 0; i < dataArray.length; i++) {
+        const x = (i / dataArray.length) * w;
+        const y = ((dataArray[i] / 255) - .5) * (h * gain) + h / 2;
+        i ? vCtx.lineTo(x, y) : vCtx.moveTo(x, y);
+      }
+      vCtx.stroke();
+    }
+
+    function drawCircle(w, h, color, gain) {
+      analyser.getByteFrequencyData(dataArray);
+      const cx = w / 2, cy = h / 2;
+      const base = Math.min(w, h) * 0.20;
+      const points = 120;
+      vCtx.beginPath();
+      vCtx.strokeStyle = color;
+      vCtx.lineWidth = 2;
+      for (let i = 0; i <= points; i++) {
+        const t = i / points;
+        const idx = Math.floor(t * (dataArray.length - 1));
+        const amp = (dataArray[idx] / 255) * gain * 45;
+        const ang = t * Math.PI * 2;
+        const r = base + amp;
+        const x = cx + Math.cos(ang) * r;
+        const y = cy + Math.sin(ang) * r;
+        i ? vCtx.lineTo(x, y) : vCtx.moveTo(x, y);
+      }
+      vCtx.stroke();
+    }
+
+    function drawRadial(w, h, color, gain) {
+      analyser.getByteFrequencyData(dataArray);
+      const cx = w / 2, cy = h / 2;
+      const n = Math.min(180, dataArray.length);
+      vCtx.strokeStyle = color;
+      for (let i = 0; i < n; i++) {
+        const t = i / n;
+        const ang = t * Math.PI * 2;
+        const amp = (dataArray[i] / 255) * gain;
+        const inner = 20;
+        const outer = inner + amp * Math.min(w, h) * .5;
+        vCtx.beginPath();
+        vCtx.moveTo(cx + Math.cos(ang) * inner, cy + Math.sin(ang) * inner);
+        vCtx.lineTo(cx + Math.cos(ang) * outer, cy + Math.sin(ang) * outer);
+        vCtx.stroke();
+      }
+    }
+
+    function drawEnergy(w, h, color, gain) {
+      analyser.getByteFrequencyData(dataArray);
+      const bands = 32;
+      const chunk = Math.floor(dataArray.length / bands);
+      const stripH = h / bands;
+      for (let b = 0; b < bands; b++) {
+        let sum = 0;
+        for (let i = 0; i < chunk; i++) sum += dataArray[b * chunk + i] || 0;
+        const level = (sum / Math.max(1, chunk)) / 255 * gain;
+        const width = level * w;
+        vCtx.fillStyle = color;
+        vCtx.fillRect(0, h - (b + 1) * stripH, width, stripH - 1);
+      }
+    }
+
+    function drawVisualizer(t = 0) {
+      const w = visCanvas.width;
+      const h = visCanvas.height;
+
+      vCtx.fillStyle = "rgba(0,0,0,0.28)";
+      vCtx.fillRect(0, 0, w, h);
+
+      if (analyser && dataArray) {
+        const color = visStrokeStyle(t);
+        const gain = Number(visSensitivity.value);
+        const mode = visType.value;
+
+        if (mode === "wave") drawWave(w, h, color, gain);
+        else if (mode === "circle") drawCircle(w, h, color, gain);
+        else if (mode === "radial") drawRadial(w, h, color, gain);
+        else if (mode === "energy") drawEnergy(w, h, color, gain);
+        else drawBars(w, h, color, gain);
+      }
+
+      requestAnimationFrame(drawVisualizer);
+    }
+
+    toggleRainbow.addEventListener("click", () => {
+      rainbowEnabled = !rainbowEnabled;
+      toggleRainbow.textContent = rainbowEnabled ? "Rainbow ON" : "Rainbow OFF";
+    });
+
+    toggleAudioSource.addEventListener("click", () => {
+      usingVideoAudio = !usingVideoAudio;
+      if (usingVideoAudio) {
+        toggleAudioSource.textContent = "Use Uploaded Audio";
+        if (audioPlayer.src) audioPlayer.pause();
+        if (video.src) connectSource(video);
+      } else {
+        toggleAudioSource.textContent = "Use Video Audio";
+        if (audioPlayer.src) connectSource(audioPlayer);
+      }
+    });
+
+    playBtn.addEventListener("click", async () => {
+      if (!video.src) return;
+      isPlaying = true;
+      modeState.textContent = `Mode: ${emojiMode.value}`;
+      try {
+        if (audioCtx && audioCtx.state === "suspended") await audioCtx.resume();
+        await video.play();
+        if (usingVideoAudio) connectSource(video);
+      } catch {
+        modeState.textContent = "Mode: autoplay blocked";
+      }
+    });
+
+    pauseBtn.addEventListener("click", () => video.pause());
+    exportPngBtn.addEventListener("click", exportPng);
+    exportGifBtn.addEventListener("click", () => exportCanvasWebm(4));
+
+    previewTrimBtn.addEventListener("click", async () => {
+      if (!video.src) return;
+      const start = Number(trimStart.value);
+      const end = Number(trimEnd.value);
+      if (end <= start) return;
+      clipPreviewing = true;
+      trimStatus.textContent = `Trim status: previewing ${start.toFixed(1)}s → ${end.toFixed(1)}s`;
+      video.currentTime = start;
+      try { await video.play(); } catch {}
+    });
+
+    jumpStartBtn.addEventListener("click", () => {
+      if (!video.src) return;
+      video.currentTime = Number(trimStart.value);
+    });
+
+    exportTrimBtn.addEventListener("click", async () => {
+      if (!video.src) return;
+      const start = Number(trimStart.value);
+      const end = Number(trimEnd.value);
+      const duration = Math.max(0.3, end - start);
+
+      trimStatus.textContent = "Trim status: recording clip...";
+
+      const stream = video.captureStream();
+      const rec = new MediaRecorder(stream, { mimeType: "video/webm" });
+      const chunks = [];
+      rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+
+      video.currentTime = start;
+      await video.play().catch(() => {});
+      rec.start();
+
+      setTimeout(() => {
+        rec.stop();
+        video.pause();
+      }, duration * 1000);
+
+      await new Promise((resolve) => rec.onstop = resolve);
+
+      const blob = new Blob(chunks, { type: "video/webm" });
+      const a = document.createElement("a");
+      a.download = `trim-${Date.now()}.webm`;
+      a.href = URL.createObjectURL(blob);
+      a.click();
+      trimStatus.textContent = "Trim status: exported";
+    });
+
+    fullscreenBtn.addEventListener("click", async () => {
+      const app = document.querySelector(".app");
+      if (!document.fullscreenElement) await app.requestFullscreen();
+      else await document.exitFullscreen();
+      resizeRenderSurface();
+    });
+
+    window.addEventListener("resize", resizeRenderSurface);
+
+    requestAnimationFrame(engineLoop);
+    requestAnimationFrame(drawVisualizer);
+  </script>
+</body>
+</html>
