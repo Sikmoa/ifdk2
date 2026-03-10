@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Emoji Engine Toolkit v7.0</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <div class="bg-grid" aria-hidden="true"></div>
+    <main class="app-shell">
+      <header class="hero panel">
+        <p class="kicker">Creative Video Toolkit</p>
+        <h1>EMOJI_ENGINE_TOOLKIT <span>v7.0</span></h1>
+        <p class="subtitle">
+          Multi-section tool site for emoji rendering, advanced visualizer modes, trimming,
+          and exports.
+        </p>
+        <div class="hero-chips">
+          <span id="fpsState" class="chip">FPS: --</span>
+          <span id="resState" class="chip">Internal: --</span>
+          <span id="audioState" class="chip">Audio: idle</span>
+          <span id="modeState" class="chip">Mode: idle</span>
+        </div>
+      </header>
+
+      <section class="layout">
+        <aside class="panel controls">
+          <h2>Render Controls</h2>
+          <div class="section-block">
+            <label>Video Upload</label>
+            <input type="file" id="videoUpload" accept="video/*" />
+            <div class="btn-row three">
+              <button id="playBtn">Run</button>
+              <button id="pauseBtn">Pause</button>
+              <button id="fullscreenBtn">Fullscreen</button>
+            </div>
+          </div>
+
+          <div class="section-block">
+            <label>Pixel Density <span id="resLabel">12px</span></label>
+            <input type="range" id="resSlider" min="4" max="56" step="2" value="12" />
+            <small id="resWarning" class="warning">Low pixel values are computationally heavy.</small>
+
+            <div class="grid-2">
+              <div>
+                <label>Mapping Mode</label>
+                <select id="emojiMode">
+                  <option value="full">FULL_EMOJI_MATRIX</option>
+                  <option value="ascii">ASCII_CLASSIC</option>
+                  <option value="ascii_blur">ASCII_BLUR</option>
+                  <option value="bw">BINARY_SQUARES</option>
+                  <option value="glitch">GLITCH_CORE</option>
+                  <option value="thermal">THERMAL_SIGHT</option>
+                </select>
+              </div>
+              <div>
+                <label>Color Profile</label>
+                <select id="colorProfile">
+                  <option value="source">SOURCE</option>
+                  <option value="matrix">MATRIX</option>
+                  <option value="cyber">CYBER</option>
+                  <option value="mono">MONO</option>
+                  <option value="duotone">DUOTONE</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <h2>Audio & Visualizer</h2>
+          <div class="section-block">
+            <div class="btn-row two">
+              <button id="toggleAudioSource">Use Video Audio</button>
+              <button id="toggleRainbow">Rainbow OFF</button>
+            </div>
+            <div class="grid-2">
+              <div>
+                <label>Audio Upload</label>
+                <input type="file" id="audioUpload" accept="audio/*" />
+              </div>
+              <div>
+                <label>Visualizer Color</label>
+                <input type="color" id="visColor" value="#00f2ff" />
+              </div>
+            </div>
+
+            <div class="grid-2">
+              <div>
+                <label>Visualizer Mode</label>
+                <select id="visType">
+                  <option value="bars">Bars</option>
+                  <option value="wave">Wave</option>
+                  <option value="circle">Circle</option>
+                  <option value="radial">Radial Burst</option>
+                  <option value="energy">Energy Strip</option>
+                </select>
+              </div>
+              <div>
+                <label>Sensitivity</label>
+                <input type="range" id="visSensitivity" min="0.4" max="2.2" step="0.1" value="1" />
+              </div>
+            </div>
+
+            <div class="grid-2">
+              <div>
+                <label>Smoothing</label>
+                <input type="range" id="smoothing" min="0" max="0.95" step="0.05" value="0.7" />
+              </div>
+              <div>
+                <label>Rainbow Speed</label>
+                <input type="range" id="rainbowSpeed" min="1" max="30" value="8" />
+              </div>
+            </div>
+
+            <div class="grid-2">
+              <div>
+                <label>Bass</label>
+                <input type="range" id="bassGain" min="0" max="2" step="0.1" value="1" />
+              </div>
+              <div>
+                <label>Mid</label>
+                <input type="range" id="midGain" min="0" max="2" step="0.1" value="1" />
+              </div>
+            </div>
+
+            <div>
+              <label>Treble</label>
+              <input type="range" id="trebleGain" min="0" max="2" step="0.1" value="1" />
+            </div>
+
+            <div class="grid-2">
+              <div>
+                <label>Warmth (120Hz)</label>
+                <input type="range" id="warmthGain" min="-12" max="12" step="1" value="0" />
+              </div>
+              <div>
+                <label>Reduce Mud (350Hz)</label>
+                <input type="range" id="mudGain" min="-12" max="12" step="1" value="0" />
+              </div>
+            </div>
+
+            <div class="grid-2">
+              <div>
+                <label>Presence (2.5kHz)</label>
+                <input type="range" id="presenceGain" min="-12" max="12" step="1" value="0" />
+              </div>
+              <div>
+                <label>Air (8kHz)</label>
+                <input type="range" id="airGain" min="-12" max="12" step="1" value="0" />
+              </div>
+            </div>
+          </div>
+
+          <h2>Toolbox</h2>
+          <div class="section-block">
+            <label>Direct Media URL Loader</label>
+            <input id="videoUrlInput" placeholder="https://example.com/file.mp4" />
+            <div class="btn-row two">
+              <button id="loadUrlBtn">Load URL</button>
+              <button id="copyGuideBtn">Copy Downloader Guide</button>
+            </div>
+            <p class="helper-text">
+              For YouTube/TikTok, direct browser access is often blocked. Use a backend downloader API
+              to provide direct media URLs.
+            </p>
+          </div>
+
+          <div class="section-block">
+            <label>Video Trimmer</label>
+            <small id="durationInfo">Duration: --</small>
+            <div class="grid-2">
+              <div>
+                <label>Trim Start</label>
+                <input type="range" id="trimStart" min="0" max="0" step="0.1" value="0" />
+                <small id="trimStartLabel">0.0s</small>
+              </div>
+              <div>
+                <label>Trim End</label>
+                <input type="range" id="trimEnd" min="0" max="0" step="0.1" value="0" />
+                <small id="trimEndLabel">0.0s</small>
+              </div>
+            </div>
+            <div class="btn-row three">
+              <button id="previewTrimBtn">Preview Clip</button>
+              <button id="jumpStartBtn">Jump Start</button>
+              <button id="exportTrimBtn">Export Clip</button>
+            </div>
+            <small id="trimStatus">Trim status: idle</small>
+          </div>
+
+          <div class="section-block">
+            <label>Exports</label>
+            <div class="btn-row two">
+              <button id="exportPngBtn">Export PNG</button>
+              <button id="exportWebmBtn">Export WEBM</button>
+            </div>
+          </div>
+        </aside>
+
+        <section class="panel preview-area">
+          <div class="preview-stack">
+            <canvas id="emojiCanvas"></canvas>
+            <canvas id="visualizerCanvas"></canvas>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <video id="video" playsinline></video>
+    <audio id="audioPlayer" crossorigin="anonymous"></audio>
+
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>
